@@ -37,9 +37,9 @@ from vnpy_evo.trader.utility import round_to, ZoneInfo
 from vnpy_evo.rest import Request, RestClient, Response
 from vnpy_evo.websocket import WebsocketClient
 
-
+import pytz
 # Timezone constant
-UTC_TZ = ZoneInfo("UTC")
+UTC_TZ = pytz.utc
 
 # Real server hosts
 F_REST_HOST: str = "https://fapi.binance.com"

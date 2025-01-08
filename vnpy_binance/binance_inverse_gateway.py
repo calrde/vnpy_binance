@@ -39,7 +39,9 @@ from vnpy_evo.websocket import WebsocketClient
 
 
 # Timezone constant
-UTC_TZ = ZoneInfo("UTC")
+import pytz
+# Timezone constant
+UTC_TZ = pytz.utc
 
 # Real server hosts
 D_REST_HOST: str = "https://dapi.binance.com"

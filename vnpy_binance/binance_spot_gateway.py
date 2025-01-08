@@ -5,7 +5,7 @@ import time
 from copy import copy
 from datetime import datetime, timedelta
 from enum import Enum
-from zoneinfo import ZoneInfo
+import pytz
 from time import sleep
 
 from numpy import format_float_positional
@@ -37,9 +37,6 @@ from vnpy_evo.trader.utility import round_to
 from vnpy_evo.rest import Request, RestClient, Response
 from vnpy_evo.websocket import WebsocketClient
 
-
-# Timezone constant
-UTC_TZ = ZoneInfo("UTC")
 
 # Real server hosts
 REST_HOST: str = "https://api.binance.com"
@@ -860,7 +857,7 @@ class BinanceSpotDataWebsocketApi(WebsocketClient):
             symbol=req.symbol,
             name=symbol_contract_map[req.symbol].name,
             exchange=Exchange.BINANCE,
-            datetime=datetime.now(UTC_TZ),
+            datetime=datetime.now(pytz.utc),
             gateway_name=self.gateway_name,
         )
         tick.extra = {}
@@ -948,7 +945,7 @@ class BinanceSpotDataWebsocketApi(WebsocketClient):
 
 def generate_datetime(timestamp: float) -> datetime:
     """Generate datetime object from Binance timestamp"""
-    dt: datetime = datetime.fromtimestamp(timestamp / 1000, tz=UTC_TZ)
+    dt: datetime = datetime.fromtimestamp(timestamp / 1000, tz=pytz.utc)
     return dt
 
 
