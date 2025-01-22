@@ -937,7 +937,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
         self.ticks[req.symbol.lower()] = tick
 
         channels = [
-            f"{req.symbol.lower()}@ticker",
+            # f"{req.symbol.lower()}@ticker",
             # f"{req.symbol.lower()}@bookTicker",
             f"{req.symbol.lower()}@depth10"
         ]
@@ -984,17 +984,14 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
                 price, volume = asks[n]
                 tick.__setattr__("ask_price_" + str(n + 1), float(price))
                 tick.__setattr__("ask_volume_" + str(n + 1), float(volume))
-            self.gateway.on_tick(copy(tick))
         else:
             kline_data: dict = data["k"]
-
             # Check if bar is closed
             bar_ready: bool = kline_data.get("x", False)
             if not bar_ready:
                 return
 
             dt: datetime = generate_datetime(float(kline_data['t']))
-
             tick.extra["bar"] = BarData(
                 symbol=symbol.upper(),
                 exchange=Exchange.BINANCE,
@@ -1008,7 +1005,6 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
                 close_price=float(kline_data["c"]),
                 gateway_name=self.gateway_name
             )
-
         if tick.last_price:
             tick.localtime = datetime.now()
             self.gateway.on_tick(copy(tick))
