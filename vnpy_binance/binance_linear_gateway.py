@@ -937,7 +937,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
         self.ticks[req.symbol.lower()] = tick
 
         channels = [
-            # f"{req.symbol.lower()}@ticker",
+            f"{req.symbol.lower()}@ticker",
             # f"{req.symbol.lower()}@bookTicker",
             f"{req.symbol.lower()}@depth10"
         ]
