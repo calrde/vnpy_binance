@@ -1007,7 +1007,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
                 close_price=float(kline_data["c"]),
                 gateway_name=self.gateway_name
             )
-        if tick.last_price:
+        if tick.bid_price_1:
             tick.localtime = datetime.now()
             self.gateway.on_tick(copy(tick))
 
