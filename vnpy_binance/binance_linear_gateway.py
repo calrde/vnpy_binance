@@ -939,7 +939,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
         channels = [
             f"{req.symbol.lower()}@ticker",
             # f"{req.symbol.lower()}@bookTicker",
-            f"{req.symbol.lower()}@depth10"
+            f"{req.symbol.lower()}@depth10@100ms"
         ]
 
         if self.kline_stream:
