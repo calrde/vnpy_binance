@@ -938,6 +938,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
 
         channels = [
             f"{req.symbol.lower()}@ticker",
+            # f"{req.symbol.lower()}@bookTicker",
             f"{req.symbol.lower()}@depth10"
         ]
 
@@ -972,17 +973,18 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
             tick.last_price = float(data['c'])
             tick.datetime = generate_datetime(float(data['E']))
         elif channel == "depth10":
+            tick.datetime = generate_datetime(float(data['E']))
             bids: list = data["b"]
             for n in range(min(10, len(bids))):
                 price, volume = bids[n]
                 tick.__setattr__("bid_price_" + str(n + 1), float(price))
                 tick.__setattr__("bid_volume_" + str(n + 1), float(volume))
-
             asks: list = data["a"]
             for n in range(min(10, len(asks))):
                 price, volume = asks[n]
                 tick.__setattr__("ask_price_" + str(n + 1), float(price))
                 tick.__setattr__("ask_volume_" + str(n + 1), float(volume))
+            self.gateway.on_tick(copy(tick))
         else:
             kline_data: dict = data["k"]
 
