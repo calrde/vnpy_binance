@@ -961,7 +961,9 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
 
         data: dict = packet["data"]
 
-        symbol, channel = stream.split("@")
+        stream_items = stream.split("@")#一定大于等于2个
+        symbol = stream_items[0]
+        channel = stream_items[1]
         tick: TickData = self.ticks[symbol]
 
         if channel == "ticker":
