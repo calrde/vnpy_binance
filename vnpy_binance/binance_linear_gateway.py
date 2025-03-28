@@ -194,6 +194,17 @@ class BinanceLinearGateway(BaseGateway):
         """Save a copy of order and then push"""
         self.orders[order.orderid] = copy(order)
         super().on_order(order)
+        self.clear_old_order()
+
+    def clear_old_order(self):
+        if len(self.orders) > 10000:
+            sorted_keys = sorted(self.orders.keys()) #升序排序
+            #留5000个够可，一个api以10s每个下单也可以支持8分钟内查找
+            last_key = None
+            for key in sorted_keys[:int(len(sorted_keys)/2)]:
+                self.orders.pop(key, None)
+                last_key = key
+            print(f"binance 订单已超过1w个，已自动清理一半至 {last_key}...")
 
     def get_order(self, orderid: str) -> OrderData:
         """Get previously saved order"""
