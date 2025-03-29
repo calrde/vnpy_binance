@@ -65,6 +65,7 @@ STATUS_BINANCES2VT: dict[str, Status] = {
 ORDERTYPE_VT2BINANCES: dict[OrderType, tuple[str, str]] = {
     OrderType.LIMIT: ("LIMIT", "GTC"),
     OrderType.MARKET: ("MARKET", "GTC"),
+    OrderType.MAKER: ("LIMIT", "GTX"),
     OrderType.FAK: ("LIMIT", "IOC"),
     OrderType.FOK: ("LIMIT", "FOK"),
 }
