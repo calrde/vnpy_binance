@@ -81,9 +81,14 @@ DIRECTION_BINANCES2VT: dict[str, Direction] = {v: k for k, v in DIRECTION_VT2BIN
 # Kline interval map
 INTERVAL_VT2BINANCES: dict[Interval, str] = {
     Interval.MINUTE: "1m",
+    Interval.MINUTE_5: "5m",
+    Interval.MINUTE_15: "15m",
+    Interval.MINUTE_30: "30m",
+    Interval.HOUR_4: "4H",
     Interval.HOUR: "1h",
     Interval.DAILY: "1d",
 }
+
 
 # Timedelta map
 TIMEDELTA_MAP: dict[Interval, timedelta] = {
