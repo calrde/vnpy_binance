@@ -317,7 +317,7 @@ class BinanceLinearRestApi(RestClient):
 
         self.start()
 
-        self.gateway.write_log("REST API started")
+        self.gateway.write_log(f"{self.gateway_name} REST API started")
 
         self.query_time()
         self.query_contract()
@@ -503,7 +503,7 @@ class BinanceLinearRestApi(RestClient):
         server_time: int = int(data["serverTime"])
         self.time_offset: int = local_time - server_time
 
-        self.gateway.write_log(f"Server time updated, local offset: {self.time_offset}ms")
+        self.gateway.write_log(f"Binance Server time updated, local offset: {self.time_offset}ms")
 
         # Query private data after time offset is calculated
         if self.key and self.secret:
@@ -524,7 +524,7 @@ class BinanceLinearRestApi(RestClient):
 
             self.gateway.on_account(account)
 
-        self.gateway.write_log("Account balance data is received")
+        self.gateway.write_log(f"{self.gateway_name} Account balance data is received")
 
     def on_query_position(self, data: list, request: Request) -> None:
         """Callback of holding positions query"""
@@ -541,7 +541,7 @@ class BinanceLinearRestApi(RestClient):
 
             self.gateway.on_position(position)
 
-        self.gateway.write_log("Holding positions data is received")
+        self.gateway.write_log(f"{self.gateway_name} Holding positions data is received")
 
     def on_query_order(self, data: list, request: Request) -> None:
         """Callback of open orders query"""
@@ -566,7 +566,7 @@ class BinanceLinearRestApi(RestClient):
             )
             self.gateway.on_order(order)
 
-        self.gateway.write_log("Open orders data is received")
+        self.gateway.write_log(f"{self.gateway_name} Open orders data is received")
 
     def on_query_contract(self, data: dict, request: Request) -> None:
         """Callback of available contracts query"""
@@ -601,7 +601,7 @@ class BinanceLinearRestApi(RestClient):
 
             symbol_contract_map[contract.symbol] = contract
 
-        self.gateway.write_log("Available contracts data is received")
+        self.gateway.write_log(f"Binance Available contracts data is received")
 
     def on_send_order(self, data: dict, request: Request) -> None:
         """Successful callback of send_order"""
@@ -613,7 +613,7 @@ class BinanceLinearRestApi(RestClient):
         order.status = Status.REJECTED
         self.gateway.on_order(order)
 
-        msg: str = f"Send order failed, status code: {status_code}, message: {request.response.text}"
+        msg: str = f"{self.gateway_name} Send order failed, status code: {status_code}, message: {request.response.text}"
         self.gateway.write_log(msg)
 
     def on_send_order_error(self, exception_type: type, exception_value: Exception, tb, request: Request) -> None:
@@ -636,7 +636,7 @@ class BinanceLinearRestApi(RestClient):
             order.status = Status.REJECTED
             self.gateway.on_order(order)
 
-        msg: str = f"Cancel order failed, status code: {status_code}, message: {request.response.text}, order: {request.extra} "
+        msg: str = f"{self.gateway_name} Cancel order failed, status code: {status_code}, message: {request.response.text}, order: {request.extra} "
         self.gateway.write_log(msg)
 
     def on_start_user_stream(self, data: dict, request: Request) -> None:
@@ -690,13 +690,13 @@ class BinanceLinearRestApi(RestClient):
 
             # Break the loop if request failed
             if resp.status_code // 100 != 2:
-                msg: str = f"Query kline history failed, status code: {resp.status_code}, message: {resp.text}"
+                msg: str = f"Binance Query kline history failed, status code: {resp.status_code}, message: {resp.text}"
                 self.gateway.write_log(msg)
                 break
             else:
                 data: dict = resp.json()
                 if not data:
-                    msg: str = f"No kline history data is received, start time: {start_time}"
+                    msg: str = f"Binance No kline history data is received, start time: {start_time}"
                     self.gateway.write_log(msg)
                     break
 
@@ -727,7 +727,7 @@ class BinanceLinearRestApi(RestClient):
                 end: datetime = buf[-1].datetime
 
                 history.extend(buf)
-                msg: str = f"Query kline history finished, {req.symbol} - {req.interval.value}, {begin} - {end}"
+                msg: str = f"Binance Query kline history finished, {req.symbol} - {req.interval.value}, {begin} - {end}"
                 self.gateway.write_log(msg)
 
                 # Break the loop if the latest data received
@@ -772,7 +772,7 @@ class BinanceLinearTradeWebsocketApi(WebsocketClient):
 
     def on_connected(self) -> None:
         """Callback when server is connected"""
-        self.gateway.write_log("Trade Websocket API is connected")
+        self.gateway.write_log(f"{self.gateway_name} Trade Websocket API is connected")
 
     def on_packet(self, packet: dict) -> None:
         """Callback of data update"""
@@ -785,7 +785,7 @@ class BinanceLinearTradeWebsocketApi(WebsocketClient):
 
     def on_listen_key_expired(self) -> None:
         """Callback of listen key expired"""
-        self.gateway.write_log("Listen key is expired")
+        self.gateway.write_log(f"{self.gateway_name} Listen key is expired")
         self.disconnect()
 
     def on_account(self, packet: dict) -> None:
@@ -871,7 +871,7 @@ class BinanceLinearTradeWebsocketApi(WebsocketClient):
 
     def on_disconnected(self, status_code: int, msg: str) -> None:
         """Callback when server is disconnected"""
-        self.gateway.write_log(f"Trade Websocket API is disconnected, code: {status_code}, msg: {msg}")
+        self.gateway.write_log(f"{self.gateway_name} Trade Websocket API is disconnected, code: {status_code}, msg: {msg}")
         self.gateway.rest_api.start_user_stream()
 
 
@@ -912,7 +912,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
 
     def on_connected(self) -> None:
         """Callback when server is connected"""
-        self.gateway.write_log("Data Websocket API is connected")
+        self.gateway.write_log("Binance Data Websocket API is connected")
 
         # Resubscribe market data
         if self.ticks:
@@ -937,7 +937,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
             return
 
         if req.symbol not in symbol_contract_map:
-            self.gateway.write_log(f"Symbol not found {req.symbol}")
+            self.gateway.write_log(f"binance Symbol not found {req.symbol}")
             return
 
         self.reqid += 1
@@ -1030,7 +1030,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
 
     def on_disconnected(self, status_code: int, msg: str) -> None:
         """Callback when server is disconnected"""
-        self.gateway.write_log("Data Websocket API is disconnected, code: {status_code}, msg: {msg}")
+        self.gateway.write_log("Binance Data Ws API is disconnected, code: {status_code}, msg: {msg}")
 
 
 def generate_datetime(timestamp: float) -> datetime:
