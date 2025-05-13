@@ -391,7 +391,7 @@ class BinanceLinearRestApi(RestClient):
         """Send new order"""
         # Generate new order id
         self.order_count += 1
-        orderid: str = datetime.now().strftime("%y%m%d%H%M%S") + str(self.order_count)
+        orderid: str = datetime.now().strftime("%y%m%d%H%M%S%f")[:-3] + req.symbol + str(self.order_count)
 
         # Push a submitting order event
         order: OrderData = req.create_order_data(
@@ -844,6 +844,7 @@ class BinanceLinearTradeWebsocketApi(WebsocketClient):
             offset=offset
         )
 
+        print(f"{datetime.now()} receive order:{order.symbol} {order.vt_orderid} {order.status}")
         self.gateway.on_order(order)
 
         # Round trade volume to meet step size
