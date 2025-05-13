@@ -844,7 +844,7 @@ class BinanceLinearTradeWebsocketApi(WebsocketClient):
             offset=offset
         )
 
-        print(f"{datetime.now()} receive order:{order.symbol} {order.vt_orderid} {order.status}")
+        #print(f"{datetime.now()} receive order:{order.symbol} {order.vt_orderid} {order.status}")
         self.gateway.on_order(order)
 
         # Round trade volume to meet step size
