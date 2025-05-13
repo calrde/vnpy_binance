@@ -391,7 +391,7 @@ class BinanceLinearRestApi(RestClient):
         """Send new order"""
         # Generate new order id
         self.order_count += 1
-        orderid: str = datetime.now().strftime("%y%m%d%H%M%S%f")[:-3] + req.symbol + str(self.order_count)
+        orderid: str = datetime.now().strftime("%y%m%d%H%M%Ss%f")[:-3] + req.symbol + str(self.order_count)
 
         # Push a submitting order event
         order: OrderData = req.create_order_data(
