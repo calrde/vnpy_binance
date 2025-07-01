@@ -21,6 +21,7 @@ from vnpy_evo.trader.constant import (
 from vnpy_evo.trader.gateway import BaseGateway
 from vnpy_evo.trader.object import (
     TickData,
+    LqOrderData,
     OrderData,
     TradeData,
     AccountData,
@@ -38,6 +39,7 @@ from vnpy_evo.rest import Request, RestClient, Response
 from vnpy_evo.websocket import WebsocketClient
 
 import pytz
+
 # Timezone constant
 UTC_TZ = pytz.utc
 
@@ -89,7 +91,6 @@ INTERVAL_VT2BINANCES: dict[Interval, str] = {
     Interval.DAILY: "1d",
 }
 
-
 # Timedelta map
 TIMEDELTA_MAP: dict[Interval, timedelta] = {
     Interval.MINUTE: timedelta(minutes=1),
@@ -99,7 +100,6 @@ TIMEDELTA_MAP: dict[Interval, timedelta] = {
 
 # Set weboscket timeout to 24 hour
 WEBSOCKET_TIMEOUT = 24 * 60 * 60
-
 
 # Global dict for contract data
 symbol_contract_map: dict[str, ContractData] = {}
@@ -204,10 +204,10 @@ class BinanceLinearGateway(BaseGateway):
 
     def clear_old_order(self):
         if len(self.orders) > 10000:
-            sorted_keys = sorted(self.orders.keys()) #升序排序
-            #留5000个够可，一个api以10s每个下单也可以支持8分钟内查找
+            sorted_keys = sorted(self.orders.keys())  # 升序排序
+            # 留5000个够可，一个api以10s每个下单也可以支持8分钟内查找
             last_key = None
-            for key in sorted_keys[:int(len(sorted_keys)/2)]:
+            for key in sorted_keys[:int(len(sorted_keys) / 2)]:
                 self.orders.pop(key, None)
                 last_key = key
             print(f"binance 订单已超过1w个，已自动清理一半至 {last_key}...")
@@ -294,12 +294,12 @@ class BinanceLinearRestApi(RestClient):
         return request
 
     def connect(
-        self,
-        key: str,
-        secret: str,
-        server: str,
-        proxy_host: str,
-        proxy_port: int
+            self,
+            key: str,
+            secret: str,
+            server: str,
+            proxy_host: str,
+            proxy_port: int
     ) -> None:
         """Start server connection"""
         self.key = key
@@ -657,7 +657,7 @@ class BinanceLinearRestApi(RestClient):
 
     def on_keep_user_stream_error(self, exception_type: type, exception_value: Exception, tb, request: Request) -> None:
         """Error callback of keep_user_stream"""
-        if not issubclass(exception_type, TimeoutError):        # Ignore timeout exception
+        if not issubclass(exception_type, TimeoutError):  # Ignore timeout exception
             self.on_error(exception_type, exception_value, tb, request)
 
     def query_history(self, req: HistoryRequest) -> list[BarData]:
@@ -679,7 +679,7 @@ class BinanceLinearRestApi(RestClient):
             path: str = "/fapi/v1/klines"
             if req.end:
                 end_time = int(datetime.timestamp(req.end))
-                params["endTime"] = end_time * 1000     # Convert to milliseconds
+                params["endTime"] = end_time * 1000  # Convert to milliseconds
 
             resp: Response = self.request(
                 "GET",
@@ -732,8 +732,8 @@ class BinanceLinearRestApi(RestClient):
 
                 # Break the loop if the latest data received
                 if (
-                    len(data) < limit
-                    or (req.end and end >= req.end)
+                        len(data) < limit
+                        or (req.end and end >= req.end)
                 ):
                     break
 
@@ -844,7 +844,7 @@ class BinanceLinearTradeWebsocketApi(WebsocketClient):
             offset=offset
         )
 
-        #print(f"{datetime.now()} receive order:{order.symbol} {order.vt_orderid} {order.status}")
+        # print(f"{datetime.now()} receive order:{order.symbol} {order.vt_orderid} {order.status}")
         self.gateway.on_order(order)
 
         # Round trade volume to meet step size
@@ -872,7 +872,8 @@ class BinanceLinearTradeWebsocketApi(WebsocketClient):
 
     def on_disconnected(self, status_code: int, msg: str) -> None:
         """Callback when server is disconnected"""
-        self.gateway.write_log(f"{self.gateway_name} Trade Websocket API is disconnected, code: {status_code}, msg: {msg}")
+        self.gateway.write_log(
+            f"{self.gateway_name} Trade Websocket API is disconnected, code: {status_code}, msg: {msg}")
         self.gateway.rest_api.start_user_stream()
 
 
@@ -891,15 +892,16 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
         self.gateway_name: str = gateway.gateway_name
 
         self.ticks: dict[str, TickData] = {}
+        self.lq_orders: dict[str, LqOrderData] = {}
         self.reqid: int = 0
         self.kline_stream: bool = False
 
     def connect(
-        self,
-        server: str,
-        kline_stream: bool,
-        proxy_host: str,
-        proxy_port: int,
+            self,
+            server: str,
+            kline_stream: bool,
+            proxy_host: str,
+            proxy_port: int,
     ) -> None:
         """Start server connection"""
         self.kline_stream = kline_stream
@@ -916,8 +918,10 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
         self.gateway.write_log("Binance Data Websocket API is connected")
 
         # Resubscribe market data
+        channels = []
+        channels.append("!forceOrder@arr")  # subscribe_liquidation_orders
+
         if self.ticks:
-            channels = []
             for symbol in self.ticks.keys():
                 channels.append(f"{symbol}@ticker")
                 channels.append(f"{symbol}@depth10")
@@ -925,6 +929,16 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
                 if self.kline_stream:
                     channels.append(f"{symbol}@kline_1m")
 
+            self.reqid += 1
+            req: dict = {
+                "method": "SUBSCRIBE",
+                "params": channels,
+                "id": self.reqid
+            }
+
+            self.send_packet(req)
+        else:
+            self.reqid += 1
             req: dict = {
                 "method": "SUBSCRIBE",
                 "params": channels,
@@ -954,6 +968,15 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
         tick.extra = {}
         self.ticks[req.symbol.lower()] = tick
 
+        lq_order: LqOrderData = LqOrderData(
+            symbol=req.symbol,
+            exchange=req.exchange,
+            name=req.symbol,
+            datetime=datetime.now(UTC_TZ),
+            gateway_name=self.gateway_name,
+        )
+        self.lq_orders[req.symbol] = lq_order
+
         channels = [
             f"{req.symbol.lower()}@ticker",
             # f"{req.symbol.lower()}@bookTicker",
@@ -978,56 +1001,71 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
             return
 
         data: dict = packet["data"]
-
-        stream_items = stream.split("@")#一定大于等于2个
-        symbol = stream_items[0]
-        channel = stream_items[1]
-        tick: TickData = self.ticks[symbol]
-
-        if channel == "ticker":
-            tick.volume = float(data['v'])
-            tick.turnover = float(data['q'])
-            tick.open_price = float(data['o'])
-            tick.high_price = float(data['h'])
-            tick.low_price = float(data['l'])
-            tick.last_price = float(data['c'])
-            tick.datetime = generate_datetime(float(data['E']))
-        elif channel == "depth10":
-            tick.datetime = generate_datetime(float(data['E']))
-            bids: list = data["b"]
-            for n in range(min(10, len(bids))):
-                price, volume = bids[n]
-                tick.__setattr__("bid_price_" + str(n + 1), float(price))
-                tick.__setattr__("bid_volume_" + str(n + 1), float(volume))
-            asks: list = data["a"]
-            for n in range(min(10, len(asks))):
-                price, volume = asks[n]
-                tick.__setattr__("ask_price_" + str(n + 1), float(price))
-                tick.__setattr__("ask_volume_" + str(n + 1), float(volume))
-        else:
-            kline_data: dict = data["k"]
-            # Check if bar is closed
-            bar_ready: bool = kline_data.get("x", False)
-            if not bar_ready:
+        if "forceOrder" in stream:
+            _dt = generate_datetime(float(data['E']))
+            obj = data["o"]
+            symbol = obj["s"]
+            if symbol not in self.lq_orders:
+                print(
+                    f'{str(_dt)[:-9]} {symbol} {obj["S"]} price:{obj["p"]} size:{obj["q"]}')
                 return
+            else:
+                lq_order: LqOrderData = self.lq_orders[symbol]
+                lq_order.bkPx = float(obj["p"])
+                lq_order.size = float(obj["q"])
+                lq_order.side = obj["S"].lower()
+                lq_order.datetime = _dt
+                self.gateway.on_lq_order(copy(lq_order))
+                print(f'{str(_dt)[:-9]} {symbol} {lq_order.side} price:{lq_order.bkPx} size:{lq_order.size}')
+        else:
+            stream_items = stream.split("@")  # 一定大于等于2个
+            symbol = stream_items[0]
+            channel = stream_items[1]
+            tick: TickData = self.ticks[symbol]
+            if channel == "ticker":
+                tick.volume = float(data['v'])
+                tick.turnover = float(data['q'])
+                tick.open_price = float(data['o'])
+                tick.high_price = float(data['h'])
+                tick.low_price = float(data['l'])
+                tick.last_price = float(data['c'])
+                tick.datetime = generate_datetime(float(data['E']))
+            elif channel == "depth10":
+                tick.datetime = generate_datetime(float(data['E']))
+                bids: list = data["b"]
+                for n in range(min(10, len(bids))):
+                    price, volume = bids[n]
+                    tick.__setattr__("bid_price_" + str(n + 1), float(price))
+                    tick.__setattr__("bid_volume_" + str(n + 1), float(volume))
+                asks: list = data["a"]
+                for n in range(min(10, len(asks))):
+                    price, volume = asks[n]
+                    tick.__setattr__("ask_price_" + str(n + 1), float(price))
+                    tick.__setattr__("ask_volume_" + str(n + 1), float(volume))
+            else:
+                kline_data: dict = data["k"]
+                # Check if bar is closed
+                bar_ready: bool = kline_data.get("x", False)
+                if not bar_ready:
+                    return
 
-            dt: datetime = generate_datetime(float(kline_data['t']))
-            tick.extra["bar"] = BarData(
-                symbol=symbol.upper(),
-                exchange=Exchange.BINANCE,
-                datetime=dt.replace(second=0, microsecond=0),
-                interval=Interval.MINUTE,
-                volume=float(kline_data["v"]),
-                turnover=float(kline_data["q"]),
-                open_price=float(kline_data["o"]),
-                high_price=float(kline_data["h"]),
-                low_price=float(kline_data["l"]),
-                close_price=float(kline_data["c"]),
-                gateway_name=self.gateway_name
-            )
-        if tick.bid_price_1:
-            tick.localtime = datetime.now()
-            self.gateway.on_tick(copy(tick))
+                dt: datetime = generate_datetime(float(kline_data['t']))
+                tick.extra["bar"] = BarData(
+                    symbol=symbol.upper(),
+                    exchange=Exchange.BINANCE,
+                    datetime=dt.replace(second=0, microsecond=0),
+                    interval=Interval.MINUTE,
+                    volume=float(kline_data["v"]),
+                    turnover=float(kline_data["q"]),
+                    open_price=float(kline_data["o"]),
+                    high_price=float(kline_data["h"]),
+                    low_price=float(kline_data["l"]),
+                    close_price=float(kline_data["c"]),
+                    gateway_name=self.gateway_name
+                )
+            if tick.bid_price_1:
+                tick.localtime = datetime.now()
+                self.gateway.on_tick(copy(tick))
 
     def on_disconnected(self, status_code: int, msg: str) -> None:
         """Callback when server is disconnected"""
