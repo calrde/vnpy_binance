@@ -391,7 +391,7 @@ class BinanceLinearRestApi(RestClient):
         """Send new order"""
         # Generate new order id
         self.order_count += 1
-        orderid: str = datetime.now().strftime("%y%m%d%H%M%Ss%f")[:-3] + req.symbol + str(self.order_count)
+        orderid: str = datetime.now().strftime("%y%m%d%H%M%Ss%f")[:-3] + req.symbol[:-4] + str(self.order_count)
 
         # Push a submitting order event
         order: OrderData = req.create_order_data(
@@ -1006,8 +1006,8 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
             obj = data["o"]
             symbol = obj["s"]
             if symbol not in self.lq_orders:
-                print(
-                    f'{str(_dt)[:-9]} {symbol} {obj["S"]} price:{obj["p"]} size:{obj["q"]}')
+                # print(
+                #     f'{str(_dt)[:-9]} {symbol} {obj["S"]} price:{obj["p"]} size:{obj["q"]}')
                 return
             else:
                 lq_order: LqOrderData = self.lq_orders[symbol]
@@ -1016,7 +1016,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
                 lq_order.side = obj["S"].lower()
                 lq_order.datetime = _dt
                 self.gateway.on_lq_order(copy(lq_order))
-                print(f'{str(_dt)[:-9]} {symbol} {lq_order.side} price:{lq_order.bkPx} size:{lq_order.size}')
+                # print(f'{str(_dt)[:-9]} {symbol} {lq_order.side} price:{lq_order.bkPx} size:{lq_order.size}')
         else:
             stream_items = stream.split("@")  # 一定大于等于2个
             symbol = stream_items[0]
