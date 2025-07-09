@@ -196,7 +196,6 @@ class BinanceLinearGateway(BaseGateway):
 
     def process_fundingrate_timer(self, event: Event):
         if self.fundingrate_count % 60 == 0:  # 每 60 秒执行一次
-            print(datetime.now(),"查询资金费率")
             self.rest_api.query_funding_rate()
 
         self.fundingrate_count += 1
