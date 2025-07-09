@@ -22,6 +22,7 @@ from vnpy_evo.trader.gateway import BaseGateway
 from vnpy_evo.trader.object import (
     TickData,
     LqOrderData,
+    FundingData,
     OrderData,
     TradeData,
     AccountData,
@@ -145,7 +146,7 @@ class BinanceLinearGateway(BaseGateway):
         self.trade_ws_api: BinanceLinearTradeWebsocketApi = BinanceLinearTradeWebsocketApi(self)
         self.market_ws_api: BinanceLinearDataWebsocketApi = BinanceLinearDataWebsocketApi(self)
         self.rest_api: BinanceLinearRestApi = BinanceLinearRestApi(self)
-
+        self.fundingrate_count: int = 0
         self.orders: dict[str, OrderData] = {}
 
     def connect(self, setting: dict) -> None:
@@ -161,6 +162,7 @@ class BinanceLinearGateway(BaseGateway):
         self.market_ws_api.connect(server, kline_stream, proxy_host, proxy_port)
 
         self.event_engine.register(EVENT_TIMER, self.process_timer_event)
+        self.event_engine.register(EVENT_TIMER, self.process_fundingrate_timer)
 
     def subscribe(self, req: SubscribeRequest) -> None:
         """Subscribe market data"""
@@ -191,6 +193,13 @@ class BinanceLinearGateway(BaseGateway):
         self.rest_api.stop()
         self.trade_ws_api.stop()
         self.market_ws_api.stop()
+
+    def process_fundingrate_timer(self, event: Event):
+        if self.fundingrate_count % 60 == 0:  # 每 60 秒执行一次
+            print(datetime.now(),"查询资金费率")
+            self.rest_api.query_funding_rate()
+
+        self.fundingrate_count += 1
 
     def process_timer_event(self, event: Event) -> None:
         """Process timer task"""
@@ -526,6 +535,26 @@ class BinanceLinearRestApi(RestClient):
 
         self.gateway.write_log(f"{self.gateway_name} Account balance data is received")
 
+    def on_query_fundingrate(self, data: list, request: Request) -> None:
+            """Callback of fundingrate query"""
+            for d in data:
+                _dt = generate_datetime(float(d['time']))
+                fdrate: FundingData = FundingData(
+                    symbol=d["symbol"],
+                    exchange=Exchange.BINANCE,
+                    datetime=_dt,
+                    nextFundingTime=float(d["nextFundingTime"]),
+                    interestRate=float(d["interestRate"]),
+                    lastFundingRate=float(d["lastFundingRate"]),
+                    markPrice=float(d["markPrice"]),
+                    indexPrice=float(d["indexPrice"]),
+                    gateway_name=self.gateway_name,
+                )
+
+                self.gateway.on_funding_rate(fdrate)
+
+
+
     def on_query_position(self, data: list, request: Request) -> None:
         """Callback of holding positions query"""
         for d in data:
@@ -659,6 +688,18 @@ class BinanceLinearRestApi(RestClient):
         """Error callback of keep_user_stream"""
         if not issubclass(exception_type, TimeoutError):  # Ignore timeout exception
             self.on_error(exception_type, exception_value, tb, request)
+
+    def query_funding_rate(self) -> None:
+        """Query Funding rate"""
+        data: dict = {"security": Security.SIGNED}
+        path: str = "/fapi/v1/premiumIndex"
+
+        self.add_request(
+            method="GET",
+            path=path,
+            callback=self.on_query_fundingrate,
+            data=data
+        )
 
     def query_history(self, req: HistoryRequest) -> list[BarData]:
         """Query kline history data"""
