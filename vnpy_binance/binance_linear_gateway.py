@@ -1015,6 +1015,9 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
             name=req.symbol,
             datetime=datetime.now(UTC_TZ),
             gateway_name=self.gateway_name,
+            bkPx=0.0,
+            size=0.0,
+            side=""
         )
         self.lq_orders[req.symbol] = lq_order
 
