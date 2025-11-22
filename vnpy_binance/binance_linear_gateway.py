@@ -965,6 +965,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
             for symbol in self.ticks.keys():
                 channels.append(f"{symbol}@ticker")
                 channels.append(f"{symbol}@depth10")
+                channels.append(f"{symbol}@bookTicker")
 
                 if self.kline_stream:
                     channels.append(f"{symbol}@kline_1m")
@@ -1022,7 +1023,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
 
         channels = [
             f"{req.symbol.lower()}@ticker",
-            # f"{req.symbol.lower()}@bookTicker",
+            f"{req.symbol.lower()}@bookTicker",
             f"{req.symbol.lower()}@depth10@100ms"
         ]
 
@@ -1073,6 +1074,18 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
                 tick.low_price = float(data['l'])
                 tick.last_price = float(data['c'])
                 tick.datetime = generate_datetime(float(data['E']))
+            elif channel == "bookTicker":
+                tick2 = copy(tick)
+                tick2.datetime = generate_datetime(float(data['E']))
+                bid_price  = data["b"]
+                bid_v  = data["B"]
+                tick2.__setattr__("bid_price_1" , float(bid_price))
+                tick2.__setattr__("bid_volume_1", float(bid_v))
+                ask_price = data["a"]
+                ask_v = data["A"]
+                tick2.__setattr__("ask_price_1" , float(ask_price))
+                tick2.__setattr__("ask_volume_1" , float(ask_v))
+                self.gateway.on_booktick(copy(tick2))
             elif channel == "depth10":
                 tick.datetime = generate_datetime(float(data['E']))
                 bids: list = data["b"]
@@ -1106,7 +1119,7 @@ class BinanceLinearDataWebsocketApi(WebsocketClient):
                     close_price=float(kline_data["c"]),
                     gateway_name=self.gateway_name
                 )
-            if tick.bid_price_1:
+            if tick.bid_price_1 and channel != "bookTicker": #避免bookTicker也触发
                 tick.localtime = datetime.now()
                 self.gateway.on_tick(copy(tick))
 
