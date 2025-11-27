@@ -642,6 +642,9 @@ class BinanceLinearRestApi(RestClient):
         self.gateway.on_order(order)
 
         msg: str = f"{self.gateway_name} Send order failed, status code: {status_code}, message: {request.response.text}"
+        if "-5022" == status_code: #{"code":-5022,"msg":"Due to the order could not be executed as maker, the Post Only order will be rejected. The order will not be recorded in the order history"}
+            print(msg)
+            return
         self.gateway.write_log(msg)
 
     def on_send_order_error(self, exception_type: type, exception_value: Exception, tb, request: Request) -> None:
